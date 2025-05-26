@@ -4,17 +4,18 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
-
-
 const firebaseConfig = {
-  apiKey: "AIzaSyCtEIrS_G5FccJh1KSWHCdqOhqZTkvuimc",
-  authDomain: "tdproject-b005c.firebaseapp.com",
-  projectId: "tdproject-b005c",
-  storageBucket: "tdproject-b005c.firebasestorage.app",
-  messagingSenderId: "680502796100",
-  appId: "1:680502796100:web:0cb2686976c4fb05698111",
-  measurementId: "G-KSPHJE07FH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY, // Ini harus sesuai dengan nama di .env
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+// Pastikan semua properti di atas memiliki nilai (bukan undefined)
+// console.log("Firebase Config:", firebaseConfig); // Tambahkan ini untuk debugging
+// console.log("API Key loaded:", firebaseConfig.apiKey); // Cek nilai API Key yang benar-benar dimuat
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
