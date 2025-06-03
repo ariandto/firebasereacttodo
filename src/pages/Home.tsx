@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { auth, db, provider } from "../firebase";
 import { signInWithPopup, signOut } from "firebase/auth";
 import type { User } from "firebase/auth";
+import { List, LogOut } from 'lucide-react';
+import { FiCheck } from "react-icons/fi";
 import {
   collection,
   addDoc,
@@ -27,43 +29,42 @@ interface Todo {
 }
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [text, setText] = useState("");
+  const [newTaskText, setNewTaskText] = useState("");
 
-  // Handler untuk login dengan Google
   const handleLogin = async () => {
     try {
+      console.log("Attempting Google login...");
       const result = await signInWithPopup(auth, provider);
-      // Log lengkap objek user setelah login
-      console.log("User after login:", result.user);
-      console.log("Photo URL after login:", result.user.photoURL); // Tambahan log
-      setUser(result.user);
+      console.log("Login successful! User object:", result.user);
+      console.log("Photo URL after login:", result.user.photoURL);
+      setCurrentUser(result.user);
     } catch (err) {
       console.error("Login error:", err);
     }
   };
 
-  // Handler untuk logout
   const handleLogout = async () => {
     try {
+      console.log("Attempting to log out...");
       await signOut(auth);
-      setUser(null);
-      setTodos([]); // Bersihkan todos saat logout
-      console.log("User logged out successfully."); // Tambahan log
+      setCurrentUser(null);
+      setTodos([]);
+      console.log("User logged out successfully.");
     } catch (err) {
       console.error("Logout error:", err);
     }
   };
 
-  // Mengambil data todos dari Firestore
-  const fetchTodos = async () => {
+  const fetchTodos = async (user: User) => {
     if (!user) {
-      setTodos([]); // Kosongkan todos jika tidak ada user
+      console.log("No user provided for fetching todos. Clearing todos.");
+      setTodos([]);
       return;
     }
     try {
-      console.log("Fetching todos for user:", user.uid); // Tambahan log
+      console.log("Fetching todos for user ID:", user.uid);
       const q = query(
         collection(db, "todos"),
         where("userId", "==", user.uid),
@@ -75,71 +76,81 @@ export default function Home() {
         ...(doc.data() as Omit<Todo, "id">),
       }));
       setTodos(data);
-      console.log("Todos fetched:", data.length); // Tambahan log
+      console.log(`Workspaceed ${data.length} todos for user ${user.uid}.`);
     } catch (err) {
       console.error("Fetch todos error:", err);
     }
   };
 
-  // Menambahkan todo baru
   const handleAddTodo = async () => {
-    if (!text.trim() || !user) return;
+    if (!newTaskText.trim() || !currentUser) {
+      console.log("Task text is empty or no user logged in. Cannot add todo.");
+      return;
+    }
     try {
+      console.log("Adding new todo for user:", currentUser.uid);
       await addDoc(collection(db, "todos"), {
-        userId: user.uid,
-        text: text.trim(),
+        userId: currentUser.uid,
+        text: newTaskText.trim(),
         completed: false,
         createdAt: Timestamp.now(),
         startTime: Timestamp.now(),
         endTime: null,
       });
-      setText("");
-      fetchTodos(); // Refresh todos setelah penambahan
-      console.log("Todo added successfully."); // Tambahan log
+      setNewTaskText("");
+      fetchTodos(currentUser);
+      console.log("Todo added successfully.");
     } catch (err) {
       console.error("Add todo error:", err);
     }
   };
 
-  // Menandai todo sebagai selesai
   const handleEndTodo = async (id: string) => {
     try {
+      console.log(`Marking todo ${id} as completed...`);
       await updateDoc(doc(db, "todos", id), {
         completed: true,
         endTime: Timestamp.now(),
       });
-      fetchTodos(); // Refresh todos setelah update
-      console.log(`Todo ${id} marked as done.`); // Tambahan log
+      if (currentUser) {
+        fetchTodos(currentUser);
+      }
+      console.log(`Todo ${id} marked as done.`);
     } catch (err) {
       console.error("End todo error:", err);
     }
   };
 
-  // Menghapus todo
-  const deleteTodo = async (id: string) => {
+  const handleDeleteTodo = async (id: string) => {
     try {
+      console.log(`Deleting todo ${id}...`);
       await deleteDoc(doc(db, "todos", id));
-      fetchTodos(); // Refresh todos setelah penghapusan
-      console.log(`Todo ${id} deleted.`); // Tambahan log
+      if (currentUser) {
+        fetchTodos(currentUser);
+      }
+      console.log(`Todo ${id} deleted.`);
     } catch (err) {
       console.error("Delete todo error:", err);
     }
   };
 
-  // useEffect untuk memantau status autentikasi
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => {
-      console.log("onAuthStateChanged user:", u); // Log setiap kali status auth berubah
-      setUser(u); // Perbarui state user
-      if (u) {
-        console.log("Current user photoURL in useEffect:", u.photoURL); // Log photoURL di sini
-        fetchTodos(); // Ambil todos jika ada user
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.log("onAuthStateChanged triggered. Current user:", user ? user.displayName : "No user");
+      setCurrentUser(user);
+      if (user) {
+        console.log("Current user photoURL in useEffect:", user.photoURL);
+        fetchTodos(user);
       } else {
-        setTodos([]); // Kosongkan todos jika tidak ada user
+        setTodos([]);
       }
     });
-    return () => unsubscribe(); // Cleanup subscription
-  }, []); // Hanya dijalankan sekali saat komponen mount
+
+    return () => {
+      console.log("Cleaning up auth state listener.");
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
@@ -148,66 +159,78 @@ export default function Home() {
           📝 To-Do List
         </h1>
 
-        {!user ? (
-          <div className="text-center">
+        {!currentUser ? (
+          <div className="flex justify-center">
             <button
               onClick={handleLogin}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
             >
-              Sign in with Google
+              {/* Google Icon */}
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M19.98 10.207C19.98 9.539 19.92 8.924 19.82 8.35H10.27V11.666H15.93C15.82 12.357 15.397 13.047 14.82 13.568C14.243 14.089 13.528 14.492 12.75 14.747L12.747 14.779L15.426 16.896L15.545 16.906C17.18 15.442 18.497 13.398 19.167 11.233C19.673 11.272 19.98 10.741 19.98 10.207Z" fill="#4285F4"/>
+                <path d="M10.27 19.998C12.983 19.998 15.3 19.102 16.96 17.653L14.793 15.936C13.822 16.593 12.637 17.068 11.27 17.068C8.835 17.068 6.787 15.498 6.096 13.344L5.94 13.353L3.125 15.467L3.02 15.518C4.542 18.528 7.234 19.998 10.27 19.998Z" fill="#34A853"/>
+                <path d="M5.94 13.344C5.666 12.518 5.518 11.603 5.518 10.666C5.518 9.729 5.666 8.814 5.94 7.988L5.932 7.822L3.056 5.67L3.02 5.688C2.062 7.643 1.518 9.07 1.518 10.666C1.518 12.262 2.062 13.689 3.02 15.518L5.94 13.344Z" fill="#FBBC05"/>
+                <path d="M10.27 2.935C11.536 2.935 12.695 3.398 13.565 4.195L17.027 1.488C15.26 0.548 12.983 0 10.27 0C7.234 0 4.542 1.47 3.02 4.48L5.94 6.654C6.787 4.5 8.835 2.935 10.27 2.935Z" fill="#EA4335"/>
+              </svg>
+              <span>Sign in with Google</span>
             </button>
           </div>
         ) : (
           <>
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                {/* Bagian ini adalah kunci untuk menampilkan foto profil */}
                 <img
                   src={
-                    user.photoURL ||
-                    "https://www.gravatar.com/avatar?d=mp&s=64&r=pg&f=1" // Fallback Gravatar dengan parameter yang lebih spesifik
+                    currentUser.photoURL ||
+                    "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1"
                   }
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover border border-gray-300" // Sedikit perbesar ukuran untuk visibilitas
+                  alt={currentUser.displayName || "Profile"}
+                  className="w-10 h-10 rounded-full object-cover border border-gray-300"
                   onError={(e) => {
-                    // Log jika gambar gagal dimuat
-                    console.error("Error loading profile image:", (e.target as HTMLImageElement).src);
+                    console.error("Error loading profile image. Falling back to default.", (e.target as HTMLImageElement).src);
                     (e.target as HTMLImageElement).src =
-                      "https://www.gravatar.com/avatar?d=mp&s=64&r=pg&f=1"; // Fallback jika URL utama rusak
+                      "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1";
                   }}
-                  // Tambahkan key untuk memaksa re-render jika URL berubah (jarang diperlukan tapi bisa membantu)
-                  key={user.photoURL || "default-avatar"}
+                  key={currentUser.photoURL || "default-avatar"}
                 />
                 <span className="text-base font-medium text-gray-700">
-                  Hello, {user.displayName || "User"}
+                  Hello, {currentUser.displayName || "User"}
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                <Link to="/summary" className="text-blue-600 text-sm underline hover:text-blue-800">
-                  Summary
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-red-500 text-sm underline hover:text-red-700"
-                >
-                  Logout
-                </button>
+  <Link to="/summary" className="text-blue-600 text-sm hover:text-blue-800 flex items-center gap-1 group">
+    <List className="w-4 h-4 group-hover:stroke-blue-800" /> {/* Menggunakan Lucide List icon */}
+    <span>Task List</span> {/* Tambahkan teks "Summary" di sini */}
+  </Link>
+              <button
+    onClick={handleLogout}
+    className="text-red-500 text-sm hover:text-red-700 flex items-center gap-1 group"
+  >
+    <LogOut className="w-4 h-4 group-hover:stroke-red-700" /> {/* Menggunakan Lucide LogOut icon */}
+    <span>Logout</span> {/* Tambahkan teks "Logout" di sini */}
+  </button>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <input
                 type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
+                value={newTaskText}
+                onChange={(e) => setNewTaskText(e.target.value)}
                 placeholder="Add a new task..."
                 className="border border-gray-300 rounded-md px-4 py-2 flex-grow focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
               <button
                 onClick={handleAddTodo}
-                className="bg-green-500 hover:bg-green-600 text-white font-medium px-5 py-2 rounded-md transition"
+                className="bg-green-500 hover:bg-yellow-400 text-white font-medium px-5 py-2 rounded-md transition"
               >
-                Add
+                +Add
               </button>
             </div>
 
@@ -242,18 +265,18 @@ export default function Home() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <button
-                        onClick={() => deleteTodo(todo.id)}
+                        onClick={() => handleDeleteTodo(todo.id)}
                         className="text-red-500 text-sm hover:underline"
                       >
                         ✕ Delete
                       </button>
                       {!todo.completed && (
                         <button
-                          onClick={() => handleEndTodo(todo.id)}
-                          className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded-md transition"
-                        >
-                          Mark Done
-                        </button>
+  onClick={() => handleEndTodo(todo.id)}
+  className="bg-green-100 hover:bg-yellow-400 text-green text-xs p-2 rounded-md transition flex items-center justify-center"
+>
+  <FiCheck size={16} />
+</button>
                       )}
                     </div>
                   </div>
@@ -262,6 +285,9 @@ export default function Home() {
             </ul>
           </>
         )}
+        <div className="text-center text-sm text-gray-500 mt-8">
+          © 2025 Budi Ariyanto. Made with <span className="text-red-500">❤️</span>
+        </div>
       </div>
     </div>
   );
