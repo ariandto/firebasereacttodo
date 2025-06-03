@@ -1,32 +1,31 @@
-// vite.config.ts
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
-import { VitePWA } from 'vite-plugin-pwa'; // Import VitePWA
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  base: '/firebasereacttodo/', // Tambahkan ini agar GitHub Pages bisa render dengan benar
   plugins: [
-    tailwindcss(), // Plugin Tailwind CSS Anda
+    tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate', // Mengatur tipe pendaftaran service worker
-      injectRegister: 'auto',    // Mengatur injeksi kode pendaftaran service worker
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,jpg,jpeg,gif,json}'], // Pola file yang akan di-cache
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,jpg,jpeg,gif,json}'],
       },
       includeAssets: [
         'favicon.ico',
         'apple-touch-icon.png',
         'masked-icon.svg',
-        // Tambahkan aset lain yang perlu di-cache di sini
       ],
       manifest: {
-        name: 'To do List App', // Nama lengkap aplikasi
-        short_name: 'ToDoApp',    // Nama singkat aplikasi (muncul di layar HP)
-        description: 'to do List App - Your own task',
-        theme_color: '#ffffff',    // Warna tema untuk browser/status bar
-        background_color: '#ffffff', // Warna latar belakang splash screen
-        display: 'standalone',     // Mode tampilan (penting untuk PWA)
-        scope: '/',                // Lingkup PWA
-        start_url: '/',            // URL awal saat aplikasi diluncurkan
+        name: 'To do List App',
+        short_name: 'ToDoApp',
+        description: 'To do List App - Your own task',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
+        display: 'standalone',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -42,12 +41,10 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable', // Untuk mendukung berbagai bentuk ikon di Android
+            purpose: 'any maskable',
           },
-          // Anda bisa menambahkan ukuran ikon lain di sini (misal: 144x144, 256x256)
         ],
       },
-      // Aktifkan devOptions jika Anda ingin menguji PWA saat development
       devOptions: {
         enabled: true,
       },
