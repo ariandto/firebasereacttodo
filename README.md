@@ -9,7 +9,6 @@ A simple and modern To-Do List app built using **React + TypeScript + Vite**, wi
 - ☁️ Firestore as backend database
 - 💾 Data synced to the cloud per user
 - 📱 Responsive & installable as PWA
-- 🌍 Deployed with GitHub Pages
 
 ---
 
@@ -20,7 +19,6 @@ A simple and modern To-Do List app built using **React + TypeScript + Vite**, wi
 - **Tailwind CSS**
 - **React Icons**
 - **PWA Support**
-- **GitHub Pages**
 
 ---
 

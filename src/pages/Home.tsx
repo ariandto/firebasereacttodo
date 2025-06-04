@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { auth, db, provider } from "../firebase";
 import { signInWithPopup, signOut } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { List, LogOut } from 'lucide-react';
-import { FiCheck } from "react-icons/fi";
+import { List, LogOut, Plus, Check, Trash2, Clock } from 'lucide-react';
 import {
   collection,
   addDoc,
@@ -32,9 +31,11 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTaskText, setNewTaskText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     try {
+      setIsLoading(true);
       console.log("Attempting Google login...");
       const result = await signInWithPopup(auth, provider);
       console.log("Login successful! User object:", result.user);
@@ -42,6 +43,8 @@ export default function Home() {
       setCurrentUser(result.user);
     } catch (err) {
       console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,7 +79,7 @@ export default function Home() {
         ...(doc.data() as Omit<Todo, "id">),
       }));
       setTodos(data);
-      console.log(`Workspaceed ${data.length} todos for user ${user.uid}.`);
+      console.log(`Fetched ${data.length} todos for user ${user.uid}.`);
     } catch (err) {
       console.error("Fetch todos error:", err);
     }
@@ -134,6 +137,12 @@ export default function Home() {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddTodo();
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       console.log("onAuthStateChanged triggered. Current user:", user ? user.displayName : "No user");
@@ -152,141 +161,234 @@ export default function Home() {
     };
   }, []);
 
+  const completedTodos = todos.filter(todo => todo.completed);
+  const activeTodos = todos.filter(todo => !todo.completed);
+
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold mb-6 text-left text-blue-600">
-          📝 To-Do List
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-4 px-4 sm:py-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            ✨ ToDoApp
+          </h1>
+          <p className="text-gray-600 text-sm sm:text-base">Stay organized, Your Own Task</p>
+        </div>
 
         {!currentUser ? (
-          <div className="flex justify-center">
-            <button
-              onClick={handleLogin}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-            >
-              {/* Google Icon */}
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
+          <div className="max-w-md mx-auto">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <List className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to ToDoApp</h2>
+                <p className="text-gray-600">Sign in to manage your tasks efficiently</p>
+              </div>
+              
+              <button
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold px-6 py-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed group"
               >
-                <path d="M19.98 10.207C19.98 9.539 19.92 8.924 19.82 8.35H10.27V11.666H15.93C15.82 12.357 15.397 13.047 14.82 13.568C14.243 14.089 13.528 14.492 12.75 14.747L12.747 14.779L15.426 16.896L15.545 16.906C17.18 15.442 18.497 13.398 19.167 11.233C19.673 11.272 19.98 10.741 19.98 10.207Z" fill="#4285F4"/>
-                <path d="M10.27 19.998C12.983 19.998 15.3 19.102 16.96 17.653L14.793 15.936C13.822 16.593 12.637 17.068 11.27 17.068C8.835 17.068 6.787 15.498 6.096 13.344L5.94 13.353L3.125 15.467L3.02 15.518C4.542 18.528 7.234 19.998 10.27 19.998Z" fill="#34A853"/>
-                <path d="M5.94 13.344C5.666 12.518 5.518 11.603 5.518 10.666C5.518 9.729 5.666 8.814 5.94 7.988L5.932 7.822L3.056 5.67L3.02 5.688C2.062 7.643 1.518 9.07 1.518 10.666C1.518 12.262 2.062 13.689 3.02 15.518L5.94 13.344Z" fill="#FBBC05"/>
-                <path d="M10.27 2.935C11.536 2.935 12.695 3.398 13.565 4.195L17.027 1.488C15.26 0.548 12.983 0 10.27 0C7.234 0 4.542 1.47 3.02 4.48L5.94 6.654C6.787 4.5 8.835 2.935 10.27 2.935Z" fill="#EA4335"/>
-              </svg>
-              <span>Sign in with Google</span>
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <img
-                  src={
-                    currentUser.photoURL ||
-                    "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1"
-                  }
-                  alt={currentUser.displayName || "Profile"}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-300"
-                  onError={(e) => {
-                    console.error("Error loading profile image. Falling back to default.", (e.target as HTMLImageElement).src);
-                    (e.target as HTMLImageElement).src =
-                      "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1";
-                  }}
-                  key={currentUser.photoURL || "default-avatar"}
-                />
-                <span className="text-base font-medium text-gray-700">
-                  Hello, {currentUser.displayName || "User"}
+                {/* Modern Google Icon */}
+                <div className="w-5 h-5 flex-shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                </div>
+                <span className="group-hover:text-gray-900 transition-colors">
+                  {isLoading ? 'Signing in...' : 'Continue with Google'}
                 </span>
-              </div>
-              <div className="flex items-center gap-4">
-  <Link to="/summary" className="text-blue-600 text-sm hover:text-blue-800 flex items-center gap-1 group">
-    <List className="w-4 h-4 group-hover:stroke-blue-800" /> {/* Menggunakan Lucide List icon */}
-    <span>Task List</span> {/* Tambahkan teks "Summary" di sini */}
-  </Link>
-              <button
-    onClick={handleLogout}
-    className="text-red-500 text-sm hover:text-red-700 flex items-center gap-1 group"
-  >
-    <LogOut className="w-4 h-4 group-hover:stroke-red-700" /> {/* Menggunakan Lucide LogOut icon */}
-    <span>Logout</span> {/* Tambahkan teks "Logout" di sini */}
-  </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <input
-                type="text"
-                value={newTaskText}
-                onChange={(e) => setNewTaskText(e.target.value)}
-                placeholder="Add a new task..."
-                className="border border-gray-300 rounded-md px-4 py-2 flex-grow focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <button
-                onClick={handleAddTodo}
-                className="bg-green-500 hover:bg-yellow-400 text-white font-medium px-5 py-2 rounded-md transition"
-              >
-                +Add
               </button>
             </div>
-
-            <ul className="space-y-4">
-              {todos.length === 0 && (
-                <li className="text-center text-gray-500 italic">No tasks yet. Add one!</li>
-              )}
-              {todos.map((todo) => (
-                <li
-                  key={todo.id}
-                  className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p
-                        className={`text-base font-medium ${
-                          todo.completed
-                            ? "line-through text-gray-400"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {todo.text}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Start: {todo.startTime.toDate().toLocaleString()}
-                        <br />
-                        End:{" "}
-                        {todo.endTime
-                          ? todo.endTime.toDate().toLocaleString()
-                          : "-"}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <button
-                        onClick={() => handleDeleteTodo(todo.id)}
-                        className="text-red-500 text-sm hover:underline"
-                      >
-                        ✕ Delete
-                      </button>
-                      {!todo.completed && (
-                        <button
-  onClick={() => handleEndTodo(todo.id)}
-  className="bg-green-100 hover:bg-yellow-400 text-green text-xs p-2 rounded-md transition flex items-center justify-center"
->
-  <FiCheck size={16} />
-</button>
-                      )}
-                    </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* User Header */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <img
+                      src={currentUser.photoURL || "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1"}
+                      alt={currentUser.displayName || "Profile"}
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-white shadow-lg"
+                      onError={(e) => {
+                        console.error("Error loading profile image. Falling back to default.", (e.target as HTMLImageElement).src);
+                        (e.target as HTMLImageElement).src = "https://www.gravatar.com/avatar/?d=mp&s=64&r=pg&f=1";
+                      }}
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+                      Welcome back, {currentUser.displayName?.split(' ')[0] || "User"}! 👋
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {activeTodos.length} active tasks • {completedTodos.length} completed
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Link 
+                    to="/summary" 
+                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-xl transition-all duration-200 text-sm font-medium"
+                  >
+                    <List className="w-4 h-4" />
+                    <span className="hidden sm:inline">Task List</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 text-sm font-medium"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Add Task Section */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-blue-400" />
+                Add New Task
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={newTaskText}
+                  onChange={(e) => setNewTaskText(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="What needs to be done?"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm placeholder-gray-500 text-gray-800"
+                />
+                <button
+                  onClick={handleAddTodo}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl sm:min-w-fit"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Task</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tasks Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Active Tasks */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-500" />
+                  Active Tasks ({activeTodos.length})
+                </h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {activeTodos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Clock className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 italic">No active tasks. Great job! 🎉</p>
+                    </div>
+                  ) : (
+                    activeTodos.map((todo) => (
+                      <div
+                        key={todo.id}
+                        className="bg-white/70 backdrop-blur-sm p-4 rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200 hover:shadow-md"
+                      >
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-800 font-medium mb-2 break-words">
+                              {todo.text}
+                            </p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Started: {todo.startTime.toDate().toLocaleDateString()} at {todo.startTime.toDate().toLocaleTimeString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleEndTodo(todo.id)}
+                              className="bg-green-100 hover:bg-green-200 text-green-700 p-2 rounded-lg transition-all duration-200 flex items-center justify-center group"
+                              title="Mark as complete"
+                            >
+                              <Check className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTodo(todo.id)}
+                              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-all duration-200 flex items-center justify-center group"
+                              title="Delete task"
+                            >
+                              <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Completed Tasks */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Check className="w-5 h-5 text-green-500" />
+                  Completed Tasks ({completedTodos.length})
+                </h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {completedTodos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Check className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 italic">No completed tasks yet</p>
+                    </div>
+                  ) : (
+                    completedTodos.map((todo) => (
+                      <div
+                        key={todo.id}
+                        className="bg-green-50/70 backdrop-blur-sm p-4 rounded-xl border border-green-100 hover:border-green-200 transition-all duration-200"
+                      >
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-600 font-medium mb-2 line-through break-words">
+                              {todo.text}
+                            </p>
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <p className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Started: {todo.startTime.toDate().toLocaleDateString()} at {todo.startTime.toDate().toLocaleTimeString()}
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <Check className="w-3 h-3 text-green-500" />
+                                Completed: {todo.endTime ? `${todo.endTime.toDate().toLocaleDateString()} at ${todo.endTime.toDate().toLocaleTimeString()}` : "-"}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteTodo(todo.id)}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-all duration-200 flex items-center justify-center group flex-shrink-0"
+                            title="Delete task"
+                          >
+                            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
-        <div className="text-center text-sm text-gray-500 mt-8">
-          © 2025 Budi Ariyanto. Made with <span className="text-red-500">❤️</span>
+
+        {/* Footer */}
+        <div className="text-center text-sm text-gray-500 mt-8 bg-white/50 backdrop-blur-sm rounded-xl p-4">
+          <p>© 2025 Budi Ariyanto. Made with <span className="text-red-500 animate-pulse">❤️</span> and modern design</p>
         </div>
       </div>
     </div>
