@@ -428,7 +428,7 @@ export default function Summary() {
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500 bg-white/50 backdrop-blur-sm rounded-xl p-4">
-          <p>© 2025 Budi Ariyanto. Task Analytics Dashboard</p>
+          <p>© 2025 Budi Ariyanto</p>
         </div>
       </div>
     </div>
